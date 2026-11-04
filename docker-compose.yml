@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  penpot-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: penpot-mcp-server:latest
+    container_name: penpot-mcp-server
+    restart: unless-stopped
+
+    environment:
+      # Penpot API configuration
+      - PENPOT_API_URL=${PENPOT_API_URL:-https://design.penpot.app}
+      - PENPOT_ACCESS_TOKEN=${PENPOT_ACCESS_TOKEN}
+
+      # Transport mode (stdio or http)
+      - TRANSPORT=${TRANSPORT:-stdio}
+
+      # HTTP mode configuration (only used when TRANSPORT=http)
+      - HTTP_PORT=${HTTP_PORT:-3000}
+      - HTTP_HOST=${HTTP_HOST:-0.0.0.0}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-}
+      - ENABLE_DNS_REBINDING_PROTECTION=${ENABLE_DNS_REBINDING_PROTECTION:-false}
+
+      # Node environment
+      - NODE_ENV=production
+
+    # Expose ports for HTTP mode
+    # Comment out if using stdio mode only
+    ports:
+      - "${HTTP_PORT:-3000}:${HTTP_PORT:-3000}"
+
+    # Optional: Mount volume for logs
+    volumes:
+      - ./logs:/app/logs:rw
+
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    # For HTTP mode: checks /health endpoint
+    # For stdio mode: basic node check
+    healthcheck:
+      test: ["CMD-SHELL", "if [ \"$TRANSPORT\" = \"http\" ]; then curl -f http://localhost:${HTTP_PORT:-3000}/health || exit 1; else node -e 'console.log(\"healthy\")'; fi"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Optional: Test service
+  penpot-mcp-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    image: penpot-mcp-server:test
+    container_name: penpot-mcp-test
+
+    environment:
+      - PENPOT_API_URL=${PENPOT_API_URL:-https://design.penpot.app}
+      - PENPOT_ACCESS_TOKEN=${PENPOT_ACCESS_TOKEN}
+
+    command: npm test
+
+    depends_on:
+      - penpot-mcp-server
+
+    profiles:
+      - test
+
+  # Penpot Backend
+  penpot-backend:
+    image: penpotapp/backend:latest
+    container_name: penpot-backend
+    restart: always
+    ports:
+      - "6060:6060"
+    environment:
+      # Backend configuration
+      - PENPOT_FLAGS=enable-registration enable-login-with-password enable-backend-api-doc disable-email-verification enable-log-emails
+      - PENPOT_PUBLIC_URI=http://localhost:9001

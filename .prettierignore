@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Generated code
+src/generated/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Cache
+.cache/
+coverage/
+
+# Documentation build output
+docs/.vitepress/dist
+docs/.vitepress/cache
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Git
+.git/

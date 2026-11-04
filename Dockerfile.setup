@@ -1,0 +1,15 @@
+# Setup container for initializing Penpot and creating test user
+FROM alpine:latest
+
+RUN apk add --no-cache \
+    curl \
+    jq \
+    bash \
+    postgresql-client
+
+WORKDIR /app
+
+COPY setup-penpot.sh /app/setup-penpot.sh
+RUN chmod +x /app/setup-penpot.sh
+
+CMD ["/app/setup-penpot.sh"]

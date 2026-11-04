@@ -1,0 +1,14 @@
+{
+  "claude.mcpServers": {
+    "penpot": {
+      "command": "node",
+      "args": [
+        "/home/user/penpot-mcp-server/dist/index.js"
+      ],
+      "env": {
+        "PENPOT_API_URL": "https://design.penpot.app",
+        "PENPOT_ACCESS_TOKEN": "YOUR_PENPOT_ACCESS_TOKEN_HERE"
+      }
+    }
+  }
+}

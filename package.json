@@ -1,0 +1,79 @@
+{
+  "name": "@heyeddi/penpot-mcp-server",
+  "version": "1.1.0",
+  "description": "HeyEddi fork of Penpot MCP: create boards, nest children (parentId), Flex/Grid auto-layout, export. Based on @zcubekr/penpot-mcp-server (MIT).",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "penpot-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "watch": "tsc --watch",
+    "dev": "npm run build && node dist/index.js",
+    "dev:http": "npm run build && TRANSPORT=http node dist/index.js",
+    "start:http": "TRANSPORT=http node dist/index.js",
+    "prepare": "npm run build",
+    "test": "npx tsx test-tools.ts",
+    "test:visual": "npx tsx test-visual-properties.ts",
+    "test:all": "npm run test && npm run test:visual",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "lefthook:install": "npx lefthook install",
+    "lefthook:uninstall": "npx lefthook uninstall"
+  },
+  "keywords": [
+    "mcp",
+    "penpot",
+    "design",
+    "api",
+    "automation",
+    "model-context-protocol",
+    "design-tools",
+    "penpot-api",
+    "heyeddi",
+    "flex",
+    "grid"
+  ],
+  "author": "HeyEddi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HeyEddi-com/penpot-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HeyEddi-com/penpot-mcp-server/issues"
+  },
+  "homepage": "https://github.com/HeyEddi-com/penpot-mcp-server#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "form-data": "^4.0.1",
+    "https-proxy-agent": "^7.0.6",
+    "node-fetch": "^3.3.2",
+    "uuid": "^11.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@hey-api/openapi-ts": "^0.87.0",
+    "@types/node": "^22.10.1",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.39.1",
+    "form-data": "^4.0.1",
+    "globals": "^15.0.0",
+    "lefthook": "^1.7.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

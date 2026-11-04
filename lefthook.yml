@@ -1,0 +1,58 @@
+# Lefthook configuration for penpot-mcp-server
+# https://github.com/evilmartians/lefthook
+
+# Git hooks
+pre-commit:
+  parallel: false
+  commands:
+    # TypeScript type checking
+    type-check:
+      glob: "*.{ts,js}"
+      run: npx tsc --noEmit
+      stage_fixed: false
+
+    # Lint staged files
+    lint:
+      glob: "*.{ts,js}"
+      run: npx eslint --fix {staged_files}
+      stage_fixed: true
+
+    # Format staged files
+    format:
+      glob: "*.{ts,js,json,md}"
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+
+    # Prevent commits to main branch (disabled for initial commit)
+    # protect-main:
+    #   run: |
+    #     branch=$(git symbolic-ref HEAD | sed -e 's,.*/\(.*\),\1,')
+    #     if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+    #       echo "Direct commits to main/master branch are not allowed!"
+    #       echo "Please create a feature branch and submit a PR."
+    #       exit 1
+    #     fi
+
+pre-push:
+  commands:
+    # Run tests before pushing (only if PENPOT_ACCESS_TOKEN is set)
+    tests:
+      run: |
+        # Load .env file if it exists
+        if [ -f .env ]; then
+          export $(grep -v '^#' .env | xargs)
+        fi
+
+        if [ -z "$PENPOT_ACCESS_TOKEN" ]; then
+          echo "Skipping tests: PENPOT_ACCESS_TOKEN is not set (checked both environment and .env file)"
+          exit 0
+        fi
+        npm run test
+      stage_fixed: false
+
+    # Build check
+    build:
+      run: npm run build
+      stage_fixed: false
+
+output: false
