@@ -87,11 +87,16 @@ What do you need to do?
 │   ├── Rename file → rename_file
 │   └── Delete file → delete_file
 │
+├── See what you drew
+│   └── export_shape(fileId, pageId, shapeId) → PNG in the tool result. Look at it.
+│
 └── Query/inspect
     ├── Find shapes by type/name/color → query_shapes
     ├── Get detailed shape properties → get_shape_properties
     └── Search shapes by name → search_shapes
 ```
+
+`export_shape` calls Penpot `POST /api/export` (`export-shapes`, `wait: true`). The public OpenAPI does not include that method. The image comes back on the tool result. Call it for each board you create and look at the pixels before you stop.
 
 ---
 

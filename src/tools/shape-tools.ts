@@ -3,6 +3,7 @@
  */
 
 import { PenpotClient } from '../penpot-client.js';
+import { coverImageFill } from '../board-audit.js';
 import { v4 as uuidv4 } from 'uuid';
 import {
   resolveParentContext,
@@ -16,6 +17,39 @@ import {
 /**
  * Helper to create required geometric fields for shapes
  */
+function imageFill(
+  args: {
+    fillImageId: string;
+    fillImageName?: string;
+    fillImageWidth?: number;
+    fillImageHeight?: number;
+    fillImageMtype?: string;
+    fillImageKeepAspectRatio?: boolean;
+  },
+  shapeWidth: number,
+  shapeHeight: number
+) {
+  const keepAspectRatio =
+    args.fillImageKeepAspectRatio !== undefined ? args.fillImageKeepAspectRatio : true;
+  const size = coverImageFill(
+    shapeWidth,
+    shapeHeight,
+    args.fillImageWidth,
+    args.fillImageHeight,
+    keepAspectRatio
+  );
+  return {
+    fillImage: {
+      width: size.width,
+      height: size.height,
+      mtype: args.fillImageMtype || 'image/png',
+      id: args.fillImageId,
+      name: args.fillImageName || 'image',
+      keepAspectRatio,
+    },
+  };
+}
+
 function createShapeGeometry(x: number, y: number, width: number, height: number) {
   return {
     selrect: {
@@ -43,7 +77,7 @@ export function createShapeTools(penpotClient: PenpotClient) {
   return {
     create_rectangle: {
       description:
-        'Create a rectangle shape with colors, gradients, images, borders, rounded corners, shadows, blur, and blend modes',
+        'Create a rectangle. Image fills are scaled to cover the shape. Do not stack two shapes on the same spot; put siblings in a flex frame. Call audit_board after a screen.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -86,8 +120,15 @@ export function createShapeTools(penpotClient: PenpotClient) {
           },
           fillImageId: { type: 'string', description: 'Image media ID (from upload_file_media)' },
           fillImageName: { type: 'string', description: 'Image name' },
-          fillImageWidth: { type: 'number', description: 'Image width in pixels' },
-          fillImageHeight: { type: 'number', description: 'Image height in pixels' },
+          fillImageWidth: {
+            type: 'number',
+            description:
+              'Source image width in pixels. The fill is scaled to cover this shape. A smaller fill paints the photo in the corner.',
+          },
+          fillImageHeight: {
+            type: 'number',
+            description: 'Source image height in pixels. Paired with fillImageWidth.',
+          },
           fillImageMtype: { type: 'string', description: 'Image MIME type', default: 'image/png' },
           fillImageKeepAspectRatio: {
             type: 'boolean',
@@ -167,22 +208,7 @@ export function createShapeTools(penpotClient: PenpotClient) {
             },
           ];
         } else if (args.fillImageId) {
-          // Image fill
-          fills = [
-            {
-              fillImage: {
-                width: args.fillImageWidth,
-                height: args.fillImageHeight,
-                mtype: args.fillImageMtype || 'image/png',
-                id: args.fillImageId,
-                name: args.fillImageName || 'image',
-                keepAspectRatio:
-                  args.fillImageKeepAspectRatio !== undefined
-                    ? args.fillImageKeepAspectRatio
-                    : true,
-              },
-            },
-          ];
+          fills = [imageFill(args, width, height)];
         } else {
           // Solid color fill (fillColor is required)
           if (!args.fillColor) {
@@ -339,8 +365,15 @@ export function createShapeTools(penpotClient: PenpotClient) {
           },
           fillImageId: { type: 'string', description: 'Image media ID (from upload_file_media)' },
           fillImageName: { type: 'string', description: 'Image name' },
-          fillImageWidth: { type: 'number', description: 'Image width in pixels' },
-          fillImageHeight: { type: 'number', description: 'Image height in pixels' },
+          fillImageWidth: {
+            type: 'number',
+            description:
+              'Source image width in pixels. The fill is scaled to cover this shape. A smaller fill paints the photo in the corner.',
+          },
+          fillImageHeight: {
+            type: 'number',
+            description: 'Source image height in pixels. Paired with fillImageWidth.',
+          },
           fillImageMtype: { type: 'string', description: 'Image MIME type', default: 'image/png' },
           fillImageKeepAspectRatio: {
             type: 'boolean',
@@ -415,22 +448,7 @@ export function createShapeTools(penpotClient: PenpotClient) {
             },
           ];
         } else if (args.fillImageId) {
-          // Image fill
-          fills = [
-            {
-              fillImage: {
-                width: args.fillImageWidth,
-                height: args.fillImageHeight,
-                mtype: args.fillImageMtype || 'image/png',
-                id: args.fillImageId,
-                name: args.fillImageName || 'image',
-                keepAspectRatio:
-                  args.fillImageKeepAspectRatio !== undefined
-                    ? args.fillImageKeepAspectRatio
-                    : true,
-              },
-            },
-          ];
+          fills = [imageFill(args, width, height)];
         } else {
           // Solid color fill (fillColor is required)
           if (!args.fillColor) {
@@ -802,8 +820,15 @@ export function createShapeTools(penpotClient: PenpotClient) {
           },
           fillImageId: { type: 'string', description: 'Image media ID (from upload_file_media)' },
           fillImageName: { type: 'string', description: 'Image name' },
-          fillImageWidth: { type: 'number', description: 'Image width in pixels' },
-          fillImageHeight: { type: 'number', description: 'Image height in pixels' },
+          fillImageWidth: {
+            type: 'number',
+            description:
+              'Source image width in pixels. The fill is scaled to cover this shape. A smaller fill paints the photo in the corner.',
+          },
+          fillImageHeight: {
+            type: 'number',
+            description: 'Source image height in pixels. Paired with fillImageWidth.',
+          },
           fillImageMtype: { type: 'string', description: 'Image MIME type', default: 'image/png' },
           fillImageKeepAspectRatio: {
             type: 'boolean',
@@ -883,22 +908,7 @@ export function createShapeTools(penpotClient: PenpotClient) {
             },
           ];
         } else if (args.fillImageId) {
-          // Image fill
-          fills = [
-            {
-              fillImage: {
-                width: args.fillImageWidth,
-                height: args.fillImageHeight,
-                mtype: args.fillImageMtype || 'image/png',
-                id: args.fillImageId,
-                name: args.fillImageName || 'image',
-                keepAspectRatio:
-                  args.fillImageKeepAspectRatio !== undefined
-                    ? args.fillImageKeepAspectRatio
-                    : true,
-              },
-            },
-          ];
+          fills = [imageFill(args, width, height)];
         } else {
           // Solid color fill (fillColor is required)
           if (!args.fillColor) {

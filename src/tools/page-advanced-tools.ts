@@ -732,7 +732,7 @@ export function createPageAdvancedTools(penpotClient: PenpotClient) {
 
     get_shape_properties: {
       description:
-        'Get detailed properties of a specific shape including colors, text properties, fonts, dimensions, effects, and all other attributes',
+        'Get a shape back from the file, including parentId, layout, child ids, position, and fill size. Call this after set_frame_layout. A missing layout or parentId means the shape is not in Flex.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -759,15 +759,32 @@ export function createPageAdvancedTools(penpotClient: PenpotClient) {
           throw new Error(`Shape not found: ${args.shapeId}`);
         }
 
-        // Extract relevant properties based on shape type
+        const attr = (camel: string, kebab: string) =>
+          shape[camel] !== undefined && shape[camel] !== null ? shape[camel] : shape[kebab];
+
+        // Extract relevant properties based on shape type.
+        // parentId and layout are always present (null when unset) so a pass
+        // cannot treat an omitted field as Flex.
         const properties: any = {
           id: args.shapeId,
           name: shape.name,
           type: shape.type,
-          x: shape.x,
-          y: shape.y,
+          x: shape.x ?? 0,
+          y: shape.y ?? 0,
           width: shape.width,
           height: shape.height,
+          parentId: attr('parentId', 'parent-id') ?? null,
+          frameId: attr('frameId', 'frame-id') ?? null,
+          layout: attr('layout', 'layout') ?? null,
+          layoutFlexDir: attr('layoutFlexDir', 'layout-flex-dir') ?? null,
+          layoutGridDir: attr('layoutGridDir', 'layout-grid-dir') ?? null,
+          layoutGap: attr('layoutGap', 'layout-gap') ?? null,
+          layoutPadding: attr('layoutPadding', 'layout-padding') ?? null,
+          layoutAlignItems: attr('layoutAlignItems', 'layout-align-items') ?? null,
+          layoutJustifyContent: attr('layoutJustifyContent', 'layout-justify-content') ?? null,
+          layoutItemHSizing: attr('layoutItemHSizing', 'layout-item-h-sizing') ?? null,
+          layoutItemVSizing: attr('layoutItemVSizing', 'layout-item-v-sizing') ?? null,
+          childIds: shape.shapes || [],
         };
 
         // Position and transform
