@@ -84,5 +84,81 @@ export function createPageTools(penpotClient: PenpotClient) {
         };
       },
     },
+
+    rename_page: {
+      description: 'Rename a page (and optionally set its background color).',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string', description: 'File ID' },
+          pageId: { type: 'string', description: 'Page ID' },
+          name: { type: 'string', description: 'New page name' },
+          background: {
+            type: 'string',
+            description: 'Optional page background HEX color',
+          },
+        },
+        required: ['fileId', 'pageId', 'name'],
+      },
+      handler: async (args: {
+        fileId: string;
+        pageId: string;
+        name: string;
+        background?: string;
+      }) => {
+        await penpotClient.applyChanges(args.fileId, [
+          {
+            type: 'mod-page',
+            id: args.pageId,
+            name: args.name,
+            ...(args.background !== undefined && { background: args.background }),
+          },
+        ] as any);
+        return {
+          content: [{ type: 'text', text: `Renamed page ${args.pageId} to ${args.name}` }],
+        };
+      },
+    },
+
+    delete_page: {
+      description: 'Delete a page from a file. Stale page ids fail boards; remove unused pages.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string', description: 'File ID' },
+          pageId: { type: 'string', description: 'Page ID to delete' },
+        },
+        required: ['fileId', 'pageId'],
+      },
+      handler: async (args: { fileId: string; pageId: string }) => {
+        await penpotClient.applyChanges(args.fileId, [
+          { type: 'del-page', id: args.pageId },
+        ] as any);
+        return {
+          content: [{ type: 'text', text: `Deleted page ${args.pageId}` }],
+        };
+      },
+    },
+
+    move_page: {
+      description: 'Reorder a page in the file page list.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          pageId: { type: 'string' },
+          index: { type: 'number', description: 'New zero-based index' },
+        },
+        required: ['fileId', 'pageId', 'index'],
+      },
+      handler: async (args: { fileId: string; pageId: string; index: number }) => {
+        await penpotClient.applyChanges(args.fileId, [
+          { type: 'mov-page', id: args.pageId, index: args.index },
+        ] as any);
+        return {
+          content: [{ type: 'text', text: `Moved page ${args.pageId} to index ${args.index}` }],
+        };
+      },
+    },
   };
 }

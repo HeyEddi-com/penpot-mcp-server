@@ -159,5 +159,101 @@ export function createFileTools(penpotClient: PenpotClient) {
         };
       },
     },
+
+    duplicate_file: {
+      description: 'Duplicate an entire Penpot file in the same project.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          name: { type: 'string', description: 'Optional name for the copy' },
+        },
+        required: ['fileId'],
+      },
+      handler: async (args: { fileId: string; name?: string }) => {
+        const file = await penpotClient.duplicateFile(args.fileId, args.name);
+        return {
+          content: [
+            { type: 'text', text: `Duplicated file ${args.fileId}` },
+            { type: 'text', text: JSON.stringify(file, null, 2) },
+          ],
+        };
+      },
+    },
+
+    export_binfile: {
+      description:
+        'Export a .penpot binary (base64 in the tool result). Use includeLibraries/embedAssets as needed.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          includeLibraries: { type: 'boolean', default: true },
+          embedAssets: { type: 'boolean', default: false },
+        },
+        required: ['fileId'],
+      },
+      handler: async (args: {
+        fileId: string;
+        includeLibraries?: boolean;
+        embedAssets?: boolean;
+      }) => {
+        const bytes = await penpotClient.exportBinfile({
+          fileId: args.fileId,
+          includeLibraries: args.includeLibraries,
+          embedAssets: args.embedAssets,
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Exported .penpot binary (${bytes.length} bytes) as base64`,
+            },
+            {
+              type: 'text',
+              text: bytes.toString('base64'),
+            },
+          ],
+        };
+      },
+    },
+
+    import_binfile: {
+      description: 'Import a .penpot binary (base64) into a project.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          projectId: { type: 'string' },
+          name: { type: 'string' },
+          filename: { type: 'string', default: 'import.penpot' },
+          dataBase64: { type: 'string', description: 'Base64 of the .penpot file' },
+          fileId: { type: 'string', description: 'Optional target file id' },
+        },
+        required: ['projectId', 'name', 'dataBase64'],
+      },
+      handler: async (args: {
+        projectId: string;
+        name: string;
+        filename?: string;
+        dataBase64: string;
+        fileId?: string;
+      }) => {
+        const bytes = Buffer.from(args.dataBase64, 'base64');
+        if (!bytes.length) {throw new Error('dataBase64 decoded empty');}
+        const result = await penpotClient.importBinfile({
+          projectId: args.projectId,
+          name: args.name,
+          filename: args.filename || 'import.penpot',
+          bytes,
+          ...(args.fileId && { fileId: args.fileId }),
+        });
+        return {
+          content: [
+            { type: 'text', text: `Imported ${args.name} (${bytes.length} bytes)` },
+            { type: 'text', text: JSON.stringify(result, null, 2) },
+          ],
+        };
+      },
+    },
   };
 }

@@ -35,6 +35,10 @@ import { createSnapshotTools } from './tools/snapshot-tools.js';
 import { createLibraryTools } from './tools/library-tools.js';
 import { createAlignmentTools } from './tools/alignment-tools.js';
 import { createLayoutTools } from './tools/layout-tools.js';
+import { createStructureTools } from './tools/structure-tools.js';
+import { createAssetTools } from './tools/asset-tools.js';
+import { createTokenTools } from './tools/token-tools.js';
+import { createPrototypeTools } from './tools/prototype-tools.js';
 
 // Get configuration from environment variables
 const PENPOT_API_URL = process.env.PENPOT_API_URL || 'https://design.penpot.app';
@@ -63,7 +67,7 @@ function createMcpServer(): Server {
   const server = new Server(
     {
       name: 'penpot-mcp-server',
-      version: '1.2.0',
+      version: '1.3.0',
     },
     {
       capabilities: {
@@ -92,6 +96,10 @@ function createMcpServer(): Server {
     ...createLibraryTools(penpotClient),
     ...createAlignmentTools(penpotClient),
     ...createLayoutTools(penpotClient),
+    ...createStructureTools(penpotClient),
+    ...createAssetTools(penpotClient),
+    ...createTokenTools(penpotClient),
+    ...createPrototypeTools(penpotClient),
   };
 
   // Handle list_tools request

@@ -2,6 +2,22 @@
 
 HeyEddi fork of [`@zcubekr/penpot-mcp-server`](https://github.com/zcube/penpot-mcp-server) (MIT).
 
+## HeyEddi additions (v1.3.0)
+
+On top of Flex/Grid nesting and `export_shape` / `audit_board`:
+
+| Area       | Tools                                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Pages      | `rename_page`, `delete_page`, `move_page`                                                                                       |
+| Shapes     | `create_path`, `create_svg`, `create_image`, `create_bool`, `group_shapes`, `ungroup_shapes`, `duplicate_shapes`, `move_shapes` |
+| Components | `update_component`, `delete_component`, `instantiate_component` (+ variants on create/update)                                   |
+| Media      | `upload_media` (base64 bytes)                                                                                                   |
+| Assets     | `add_color` / `update_color` / `delete_color` / `list_colors`, typography CRUD                                                  |
+| Tokens     | `set_token_set`, `set_token`, `set_token_theme`, `set_active_token_themes`, `list_tokens`                                       |
+| Prototype  | `set_interactions`, `set_flow`, `set_constraints`, `set_guide`                                                                  |
+| Files      | `duplicate_file`, `export_binfile`, `import_binfile`                                                                            |
+| Text       | `growType` on create/update (`auto-width` / `auto-height` / `fixed`)                                                            |
+
 ## HeyEddi additions (v1.1.0)
 
 These close the layout gap that made Suite/settings boards ship as absolute text-walls:
