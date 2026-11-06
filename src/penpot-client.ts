@@ -26,6 +26,17 @@ import type {
   UpdateFileRequest,
   BaseChange,
 } from './types.js';
+import {
+  asExportResource,
+  buildExportParams,
+  decodeTransitVerbose,
+  encodeTransitVerbose,
+  exportUsesWasm,
+  normalizeExportType,
+  resolveExportUri,
+  sanitizeExportName,
+  type ExportType,
+} from './export-protocol.js';
 
 // Re-export all generated SDK functions for direct use in tools
 export * from './generated/index.js';
@@ -617,5 +628,97 @@ export class PenpotClient {
     }
 
     return response.data;
+  }
+
+  // ============================================================================
+  // Export (POST /api/export — not in the public OpenAPI)
+  // ============================================================================
+
+  async exportShape(params: {
+    fileId: string;
+    pageId: string;
+    shapeId: string;
+    format?: string;
+    scale?: number;
+    name?: string;
+  }): Promise<{ filename: string; mtype: string; uri: string; bytes: Buffer }> {
+    const profile = (await this.getProfile()) as { id?: string };
+    if (!profile?.id) {
+      throw new Error('get-profile did not return an id; cannot export');
+    }
+
+    const format: ExportType = normalizeExportType(params.format);
+    const sessionCookie = process.env.PENPOT_AUTH_TOKEN;
+    const authCookie = sessionCookie?.trim() || this.config.accessToken;
+    const isWasm = exportUsesWasm(sessionCookie);
+    const body = encodeTransitVerbose(
+      buildExportParams({
+        profileId: profile.id,
+        fileId: params.fileId,
+        pageId: params.pageId,
+        objectId: params.shapeId,
+        type: format,
+        scale: params.scale ?? 1,
+        name: params.name || params.shapeId,
+        isWasm,
+      })
+    );
+
+    const apiUrl = this.config.apiUrl.replace(/\/$/, '');
+    const response = await fetch(`${apiUrl}/api/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/transit+json',
+        Accept: 'application/transit+json',
+        Cookie: `auth-token=${authCookie}`,
+      },
+      body,
+      signal: AbortSignal.timeout(120_000),
+    });
+
+    const text = await response.text();
+    let decoded: unknown;
+    try {
+      decoded = decodeTransitVerbose(text);
+    } catch {
+      throw new Error(
+        `Penpot export failed (${response.status}): ${text.slice(0, 500).replace(/\s+/g, ' ')}`
+      );
+    }
+
+    const resource = asExportResource(decoded);
+    if (!response.ok || !resource.uri) {
+      const hint = resource.hint || resource.explain || resource.type || text.slice(0, 500);
+      throw new Error(`Penpot export failed (${response.status}): ${String(hint).slice(0, 1500)}`);
+    }
+
+    const uri = resolveExportUri(apiUrl, resource.uri);
+    const bytes = await this.downloadExport(uri, authCookie);
+    const mtype = resource.mtype || (format === 'png' ? 'image/png' : 'application/octet-stream');
+    return {
+      filename:
+        resource.filename || `${sanitizeExportName(params.name || params.shapeId)}.${format}`,
+      mtype,
+      uri,
+      bytes,
+    };
+  }
+
+  private async downloadExport(uri: string, authCookie: string): Promise<Buffer> {
+    const first = await fetch(uri, { signal: AbortSignal.timeout(60_000) });
+    if (first.ok) {
+      return Buffer.from(await first.arrayBuffer());
+    }
+
+    const second = await fetch(uri, {
+      headers: { Cookie: `auth-token=${authCookie}` },
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!second.ok) {
+      throw new Error(
+        `Penpot export rendered but the file download failed (${first.status}, then ${second.status})`
+      );
+    }
+    return Buffer.from(await second.arrayBuffer());
   }
 }

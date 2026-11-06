@@ -44,7 +44,7 @@ Or a local path:
 "args": ["/absolute/path/to/penpot-mcp-server/dist/index.js"]
 ```
 
-`PENPOT_ACCESS_TOKEN` must be in the environment Cursor passes to the server. Never commit the token.
+`PENPOT_ACCESS_TOKEN` must be in the environment Cursor passes to the server. Never commit the token. `export_shape` renders a board through `POST /api/export` and returns the PNG in the tool result. Optional `PENPOT_AUTH_TOKEN` is the browser `auth-token` cookie; set it when image fills must match the canvas. The access token alone uses Penpot's WASM exporter.
 
 ### Upstream
 
@@ -169,7 +169,7 @@ The screenshot above demonstrates how you can describe a design in natural langu
 
 #### Export & Media (5 tools)
 
-- `export_shape` - Export shape/frame as image (PNG, JPG, SVG, PDF)
+- `export_shape` - Render a frame through `POST /api/export` and return the PNG (or jpeg, webp, svg, pdf) in the tool result
 - `list_file_media` - List all media used in file
 - `upload_file_media` - Upload image file (PNG, JPG, SVG, GIF, WEBP)
 - `upload_file_media_from_url` - Upload image from URL

@@ -63,7 +63,7 @@ function createMcpServer(): Server {
   const server = new Server(
     {
       name: 'penpot-mcp-server',
-      version: '1.1.0',
+      version: '1.2.0',
     },
     {
       capabilities: {
