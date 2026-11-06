@@ -122,5 +122,69 @@ export function createMediaTools(penpotClient: PenpotClient) {
         };
       },
     },
+
+    upload_media: {
+      description:
+        'Upload image bytes into a file media library. Pass base64 (optionally a data URL). Returns the media id for create_image or fillImageId.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          name: { type: 'string', description: 'Media name', default: 'upload' },
+          filename: {
+            type: 'string',
+            description: 'Filename with extension',
+            default: 'image.png',
+          },
+          mtype: { type: 'string', description: 'MIME type', default: 'image/png' },
+          dataBase64: {
+            type: 'string',
+            description: 'Raw base64 or data:image/...;base64,... string',
+          },
+          isLocal: { type: 'boolean', default: true },
+          id: { type: 'string', description: 'Optional media UUID' },
+        },
+        required: ['fileId', 'dataBase64'],
+      },
+      handler: async (args: {
+        fileId: string;
+        name?: string;
+        filename?: string;
+        mtype?: string;
+        dataBase64: string;
+        isLocal?: boolean;
+        id?: string;
+      }) => {
+        let b64 = args.dataBase64;
+        let mtype = args.mtype || 'image/png';
+        const dataUrl = /^data:([^;]+);base64,(.+)$/s.exec(b64);
+        if (dataUrl) {
+          mtype = dataUrl[1] || mtype;
+          b64 = dataUrl[2];
+        }
+        const bytes = Buffer.from(b64, 'base64');
+        if (!bytes.length) {
+          throw new Error('dataBase64 decoded to empty bytes');
+        }
+        const media = await penpotClient.uploadFileMediaObject({
+          fileId: args.fileId,
+          name: args.name || 'upload',
+          filename: args.filename || 'image.png',
+          mtype,
+          bytes,
+          isLocal: args.isLocal !== false,
+          ...(args.id && { id: args.id }),
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Uploaded media ${args.name || 'upload'} (${bytes.length} bytes)`,
+            },
+            { type: 'text', text: JSON.stringify(media, null, 2) },
+          ],
+        };
+      },
+    },
   };
 }

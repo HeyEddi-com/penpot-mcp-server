@@ -1,7 +1,7 @@
 {
   "name": "@heyeddi/penpot-mcp-server",
-  "version": "1.2.0",
-  "description": "HeyEddi fork of Penpot MCP: create boards, nest children (parentId), Flex/Grid auto-layout, export. Based on @zcubekr/penpot-mcp-server (MIT).",
+  "version": "1.3.0",
+  "description": "HeyEddi fork of Penpot MCP: boards, Flex/Grid, export, paths/SVG/images, components, tokens, prototypes. Based on @zcubekr/penpot-mcp-server (MIT).",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -15,7 +15,7 @@
     "start:http": "TRANSPORT=http node dist/index.js",
     "prepare": "npm run build",
     "test": "npx tsx test-tools.ts",
-    "test:export": "npx tsx test-export-protocol.ts && npx tsx test-board-audit.ts",
+    "test:export": "npx tsx test-export-protocol.ts && npx tsx test-board-audit.ts && npx tsx test-shape-builders.ts",
     "test:visual": "npx tsx test-visual-properties.ts",
     "test:all": "npm run test && npm run test:visual",
     "lint": "eslint .",

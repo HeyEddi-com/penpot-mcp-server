@@ -429,6 +429,22 @@ export function createPageAdvancedTools(penpotClient: PenpotClient) {
             description: 'Letter spacing in pixels for text shapes',
           },
           lineHeight: { type: 'number', description: 'Line height multiplier for text shapes' },
+          growType: {
+            type: 'string',
+            description: 'Text grow: "auto-width" | "auto-height" | "fixed"',
+          },
+          constraintsH: {
+            type: 'string',
+            description: '"left" | "right" | "leftright" | "center" | "scale"',
+          },
+          constraintsV: {
+            type: 'string',
+            description: '"top" | "bottom" | "topbottom" | "center" | "scale"',
+          },
+          interactions: {
+            type: 'string',
+            description: 'JSON array of prototype interactions (replaces existing)',
+          },
           ...frameLayoutSchemaProps,
           ...layoutItemSchemaProps,
         },
@@ -710,6 +726,20 @@ export function createPageAdvancedTools(penpotClient: PenpotClient) {
         // Blend mode
         if (args.blendMode !== undefined) {
           changes.operations.push({ type: 'set', attr: 'blendMode', val: args.blendMode });
+        }
+
+        if (args.growType !== undefined) {
+          changes.operations.push({ type: 'set', attr: 'growType', val: args.growType });
+        }
+        if (args.constraintsH !== undefined) {
+          changes.operations.push({ type: 'set', attr: 'constraintsH', val: args.constraintsH });
+        }
+        if (args.constraintsV !== undefined) {
+          changes.operations.push({ type: 'set', attr: 'constraintsV', val: args.constraintsV });
+        }
+        if (args.interactions !== undefined) {
+          const interactions = JSON.parse(args.interactions);
+          changes.operations.push({ type: 'set', attr: 'interactions', val: interactions });
         }
 
         // Flex/Grid + layout-item attrs

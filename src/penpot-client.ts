@@ -721,4 +721,134 @@ export class PenpotClient {
     }
     return Buffer.from(await second.arrayBuffer());
   }
+
+  // ============================================================================
+  // Media upload / binfile
+  // ============================================================================
+
+  async uploadFileMediaObject(params: {
+    fileId: string;
+    name: string;
+    isLocal?: boolean;
+    id?: string;
+    filename: string;
+    mtype: string;
+    bytes: Buffer;
+  }): Promise<unknown> {
+    const apiUrl = this.config.apiUrl.replace(/\/$/, '');
+    const form = new FormData();
+    form.append('file-id', params.fileId);
+    form.append('name', params.name);
+    form.append('is-local', String(params.isLocal !== false));
+    if (params.id) {
+      form.append('id', params.id);
+    }
+    const blob = new Blob([new Uint8Array(params.bytes)], { type: params.mtype });
+    form.append('content', blob, params.filename);
+
+    const response = await fetch(`${apiUrl}/api/rpc/command/upload-file-media-object`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${this.config.accessToken}`,
+        Accept: 'application/json',
+      },
+      body: form,
+      signal: AbortSignal.timeout(120_000),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(
+        `upload-file-media-object failed (${response.status}): ${text.slice(0, 1500)}`
+      );
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { raw: text };
+    }
+  }
+
+  async duplicateFile(fileId: string, name?: string): Promise<unknown> {
+    const response = await this.client.post({
+      url: '/command/duplicate-file',
+      body: { fileId, ...(name ? { name } : {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    } as any);
+    if ((response as any).error) {
+      throw new Error(`duplicate-file failed: ${JSON.stringify((response as any).error)}`);
+    }
+    return (response as any).data ?? response;
+  }
+
+  async exportBinfile(params: {
+    fileId: string;
+    includeLibraries?: boolean;
+    embedAssets?: boolean;
+    version?: number;
+  }): Promise<Buffer> {
+    const apiUrl = this.config.apiUrl.replace(/\/$/, '');
+    const body = convertKeysToKebabCase({
+      fileId: params.fileId,
+      includeLibraries: params.includeLibraries !== false,
+      embedAssets: params.embedAssets === true,
+      ...(params.version !== undefined ? { version: params.version } : {}),
+    });
+    const response = await fetch(`${apiUrl}/api/rpc/command/export-binfile`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${this.config.accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/octet-stream, application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(180_000),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`export-binfile failed (${response.status}): ${text.slice(0, 1500)}`);
+    }
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  async importBinfile(params: {
+    projectId: string;
+    name: string;
+    filename: string;
+    bytes: Buffer;
+    fileId?: string;
+  }): Promise<unknown> {
+    const apiUrl = this.config.apiUrl.replace(/\/$/, '');
+    const form = new FormData();
+    form.append('project-id', params.projectId);
+    form.append('name', params.name);
+    if (params.fileId) {
+      form.append('file-id', params.fileId);
+    }
+    const blob = new Blob([new Uint8Array(params.bytes)], {
+      type: 'application/octet-stream',
+    });
+    form.append('file', blob, params.filename);
+
+    const response = await fetch(`${apiUrl}/api/rpc/command/import-binfile`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${this.config.accessToken}`,
+        Accept: 'application/json',
+      },
+      body: form,
+      signal: AbortSignal.timeout(180_000),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`import-binfile failed (${response.status}): ${text.slice(0, 1500)}`);
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { raw: text };
+    }
+  }
 }

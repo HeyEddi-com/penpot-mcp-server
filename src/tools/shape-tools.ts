@@ -13,6 +13,12 @@ import {
   layoutItemSchemaProps,
   frameLayoutSchemaProps,
 } from '../layout-helpers.js';
+import {
+  boundsFromPathContent,
+  createShapeGeometry as sharedGeometry,
+  pathContentFromSvgD,
+  type PathSegment,
+} from '../shape-builders.js';
 
 /**
  * Helper to create required geometric fields for shapes
@@ -621,6 +627,13 @@ export function createShapeTools(penpotClient: PenpotClient) {
             description: 'Blend mode: "normal", "multiply", "screen", "overlay", etc.',
             default: 'normal',
           },
+          growType: {
+            type: 'string',
+            description: 'Text box sizing: "auto-width" | "auto-height" | "fixed"',
+            default: 'auto-width',
+          },
+          width: { type: 'number', description: 'Fixed width when growType is fixed/auto-height' },
+          height: { type: 'number', description: 'Fixed height when growType is fixed' },
         },
         required: ['fileId', 'pageId'],
       },
@@ -631,9 +644,11 @@ export function createShapeTools(penpotClient: PenpotClient) {
         const y = args.y || 0;
         const fontSize = args.fontSize || 16;
 
-        // Estimate text dimensions
-        const width = text.length * fontSize * 0.6;
-        const height = fontSize * 1.5;
+        const growType = args.growType || 'auto-width';
+        // Estimate text dimensions (override with explicit width/height when fixed)
+        const width = args.width !== undefined ? args.width : text.length * fontSize * 0.6;
+        const height =
+          args.height !== undefined ? args.height : fontSize * (args.lineHeight || 1.5);
 
         const { parentId, frameId } = await resolveParentContext(
           penpotClient,
@@ -753,6 +768,7 @@ export function createShapeTools(penpotClient: PenpotClient) {
               fontStyle,
               fills,
               verticalAlign,
+              growType,
               ...geometry,
               ...layoutItem,
               ...(args.opacity !== undefined && { opacity: args.opacity }),
@@ -1017,6 +1033,338 @@ export function createShapeTools(penpotClient: PenpotClient) {
             {
               type: 'text',
               text: `Created frame: ${args.name || 'Frame'} (ID: ${frameId})`,
+            },
+          ],
+        };
+      },
+    },
+
+    create_path: {
+      description:
+        'Create a vector path. Pass SVG path `d` (e.g. "M0 0 L100 0 L50 80 Z") or a JSON content array of Penpot segments.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          pageId: { type: 'string' },
+          ...parentIdSchemaProp,
+          ...layoutItemSchemaProps,
+          d: { type: 'string', description: 'SVG path d attribute' },
+          content: {
+            type: 'string',
+            description: 'JSON array of {command, params?} Penpot path segments',
+          },
+          name: { type: 'string', default: 'Path' },
+          fillColor: { type: 'string' },
+          fillOpacity: { type: 'number', default: 1 },
+          strokeColor: { type: 'string' },
+          strokeWidth: { type: 'number', default: 1 },
+          strokeOpacity: { type: 'number', default: 1 },
+          opacity: { type: 'number', default: 1 },
+        },
+        required: ['fileId', 'pageId'],
+      },
+      handler: async (args: any) => {
+        let content: PathSegment[];
+        if (args.d) {
+          content = pathContentFromSvgD(args.d);
+        } else if (args.content) {
+          content = JSON.parse(args.content);
+        } else {
+          throw new Error('Provide SVG path d or content JSON');
+        }
+        const bounds = boundsFromPathContent(content);
+        const shapeId = uuidv4();
+        const { parentId, frameId } = await resolveParentContext(
+          penpotClient,
+          args.fileId,
+          args.pageId,
+          args.parentId
+        );
+        const layoutItem = buildLayoutItemAttrs(args);
+        const geometry = sharedGeometry(bounds.x, bounds.y, bounds.width, bounds.height);
+        const fills = args.fillColor
+          ? [{ fillColor: args.fillColor, fillOpacity: args.fillOpacity ?? 1 }]
+          : undefined;
+        const strokes = args.strokeColor
+          ? [
+              {
+                strokeColor: args.strokeColor,
+                strokeWidth: args.strokeWidth || 1,
+                strokeOpacity: args.strokeOpacity ?? 1,
+                strokeStyle: 'solid',
+                strokeAlignment: 'center',
+              },
+            ]
+          : undefined;
+
+        await penpotClient.applyChanges(args.fileId, [
+          {
+            type: 'add-obj',
+            id: shapeId,
+            pageId: args.pageId,
+            frameId,
+            parentId,
+            obj: {
+              id: shapeId,
+              type: 'path',
+              name: args.name || 'Path',
+              x: bounds.x,
+              y: bounds.y,
+              width: bounds.width,
+              height: bounds.height,
+              parentId,
+              frameId,
+              content,
+              ...geometry,
+              ...layoutItem,
+              ...(fills && { fills }),
+              ...(strokes && { strokes }),
+              ...(args.opacity !== undefined && { opacity: args.opacity }),
+            },
+          },
+        ] as any);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Created path ${args.name || 'Path'} (ID: ${shapeId})`,
+            },
+          ],
+        };
+      },
+    },
+
+    create_svg: {
+      description:
+        'Create an svg-raw shape from an SVG markup string. Prefer create_path when you only have a path d.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          pageId: { type: 'string' },
+          ...parentIdSchemaProp,
+          ...layoutItemSchemaProps,
+          svg: { type: 'string', description: 'Full SVG markup' },
+          x: { type: 'number', default: 0 },
+          y: { type: 'number', default: 0 },
+          width: { type: 'number', default: 100 },
+          height: { type: 'number', default: 100 },
+          name: { type: 'string', default: 'SVG' },
+        },
+        required: ['fileId', 'pageId', 'svg'],
+      },
+      handler: async (args: any) => {
+        const shapeId = uuidv4();
+        const x = args.x || 0;
+        const y = args.y || 0;
+        const width = args.width || 100;
+        const height = args.height || 100;
+        const { parentId, frameId } = await resolveParentContext(
+          penpotClient,
+          args.fileId,
+          args.pageId,
+          args.parentId
+        );
+        const layoutItem = buildLayoutItemAttrs(args);
+        const geometry = sharedGeometry(x, y, width, height);
+        await penpotClient.applyChanges(args.fileId, [
+          {
+            type: 'add-obj',
+            id: shapeId,
+            pageId: args.pageId,
+            frameId,
+            parentId,
+            obj: {
+              id: shapeId,
+              type: 'svg-raw',
+              name: args.name || 'SVG',
+              x,
+              y,
+              width,
+              height,
+              parentId,
+              frameId,
+              content: args.svg,
+              ...geometry,
+              ...layoutItem,
+            },
+          },
+        ] as any);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Created SVG ${args.name || 'SVG'} (ID: ${shapeId})`,
+            },
+          ],
+        };
+      },
+    },
+
+    create_image: {
+      description:
+        'Create an image shape from a media object id (from upload_media or create_media_from_url). Prefer this over a rectangle with an image fill when the photo is the shape.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          pageId: { type: 'string' },
+          ...parentIdSchemaProp,
+          ...layoutItemSchemaProps,
+          mediaId: { type: 'string', description: 'File media object id' },
+          x: { type: 'number', default: 0 },
+          y: { type: 'number', default: 0 },
+          width: { type: 'number' },
+          height: { type: 'number' },
+          name: { type: 'string', default: 'Image' },
+          mtype: { type: 'string', default: 'image/png' },
+          keepAspectRatio: { type: 'boolean', default: true },
+        },
+        required: ['fileId', 'pageId', 'mediaId', 'width', 'height'],
+      },
+      handler: async (args: any) => {
+        const shapeId = uuidv4();
+        const x = args.x || 0;
+        const y = args.y || 0;
+        const width = args.width;
+        const height = args.height;
+        const { parentId, frameId } = await resolveParentContext(
+          penpotClient,
+          args.fileId,
+          args.pageId,
+          args.parentId
+        );
+        const layoutItem = buildLayoutItemAttrs(args);
+        const geometry = sharedGeometry(x, y, width, height);
+        await penpotClient.applyChanges(args.fileId, [
+          {
+            type: 'add-obj',
+            id: shapeId,
+            pageId: args.pageId,
+            frameId,
+            parentId,
+            obj: {
+              id: shapeId,
+              type: 'image',
+              name: args.name || 'Image',
+              x,
+              y,
+              width,
+              height,
+              parentId,
+              frameId,
+              metadata: {
+                id: args.mediaId,
+                width,
+                height,
+                mtype: args.mtype || 'image/png',
+                keepAspectRatio: args.keepAspectRatio !== false,
+              },
+              ...geometry,
+              ...layoutItem,
+            },
+          },
+        ] as any);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Created image ${args.name || 'Image'} (ID: ${shapeId}) from media ${args.mediaId}`,
+            },
+          ],
+        };
+      },
+    },
+
+    create_bool: {
+      description:
+        'Create a boolean group (union, difference, intersection, exclude) from existing shapes.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          pageId: { type: 'string' },
+          shapeIds: { type: 'array', items: { type: 'string' } },
+          boolType: {
+            type: 'string',
+            description: '"union" | "difference" | "intersection" | "exclude"',
+          },
+          name: { type: 'string', default: 'Bool' },
+          parentId: { type: 'string' },
+        },
+        required: ['fileId', 'pageId', 'shapeIds', 'boolType'],
+      },
+      handler: async (args: any) => {
+        if (!args.shapeIds?.length) {throw new Error('shapeIds required');}
+        const file = await penpotClient.getFile(args.fileId);
+        const data = file.data as any;
+        const pagesIndex = data?.pagesIndex || data?.['pages-index'] || {};
+        const objects = pagesIndex[args.pageId]?.objects || {};
+        const first = objects[args.shapeIds[0]];
+        if (!first) {throw new Error(`Shape not found: ${args.shapeIds[0]}`);}
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (const id of args.shapeIds) {
+          const s = objects[id];
+          if (!s) {throw new Error(`Shape not found: ${id}`);}
+          const x = s.x ?? s.selrect?.x ?? 0;
+          const y = s.y ?? s.selrect?.y ?? 0;
+          const w = s.width ?? s.selrect?.width ?? 0;
+          const h = s.height ?? s.selrect?.height ?? 0;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + w);
+          maxY = Math.max(maxY, y + h);
+        }
+        const width = Math.max(1, maxX - minX);
+        const height = Math.max(1, maxY - minY);
+        const boolId = uuidv4();
+        const parentId = args.parentId || first.parentId || args.pageId;
+        const frameId = first.frameId || parentId;
+        const geometry = sharedGeometry(minX, minY, width, height);
+
+        await penpotClient.applyChanges(args.fileId, [
+          {
+            type: 'add-obj',
+            id: boolId,
+            pageId: args.pageId,
+            frameId,
+            parentId,
+            obj: {
+              id: boolId,
+              type: 'bool',
+              name: args.name || 'Bool',
+              boolType: args.boolType,
+              x: minX,
+              y: minY,
+              width,
+              height,
+              parentId,
+              frameId,
+              shapes: [],
+              ...geometry,
+            },
+          },
+          {
+            type: 'mov-objects',
+            pageId: args.pageId,
+            parentId: boolId,
+            shapes: args.shapeIds,
+            index: null,
+            ignoreTouched: true,
+          },
+        ] as any);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Created bool ${args.boolType} (ID: ${boolId}) from ${args.shapeIds.length} shapes`,
             },
           ],
         };
